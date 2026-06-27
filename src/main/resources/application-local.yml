@@ -1,0 +1,15 @@
+# Local dev profile ($0). Connects to the Docker Compose Postgres/PostGIS started by `make dev`.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/snow_resorts?currentSchema=resorts
+    username: snow
+    password: snow
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:8081/.well-known/jwks.json
+
+logging:
+  level:
+    com.snowresorts.resort: DEBUG
