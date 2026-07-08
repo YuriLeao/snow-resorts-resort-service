@@ -1,6 +1,5 @@
 package com.snowresorts.resort.infrastructure.web;
 
-import com.snowresorts.resort.application.MapPackageService;
 import com.snowresorts.resort.application.ResortQueryService;
 import com.snowresorts.security.error.BadRequestException;
 import java.util.UUID;
@@ -13,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Public read endpoints for the resort catalog, detail, and offline map packages. */
+/** Public read endpoints for the resort catalog and detail. */
 @RestController
 @RequestMapping("/snow-resort-service/v1/resorts")
 public class ResortController {
@@ -23,11 +22,9 @@ public class ResortController {
     private static final double MAX_NEARBY_RADIUS_KM = 200d;
 
     private final ResortQueryService queryService;
-    private final MapPackageService mapPackageService;
 
-    public ResortController(ResortQueryService queryService, MapPackageService mapPackageService) {
+    public ResortController(ResortQueryService queryService) {
         this.queryService = queryService;
-        this.mapPackageService = mapPackageService;
     }
 
     @GetMapping
@@ -53,11 +50,6 @@ public class ResortController {
     @GetMapping("/{id}")
     public ResortDetail detail(@PathVariable UUID id) {
         return queryService.detail(id);
-    }
-
-    @GetMapping("/{id}/map-package")
-    public MapPackageResponse mapPackage(@PathVariable UUID id) {
-        return mapPackageService.latest(id);
     }
 
     /**
