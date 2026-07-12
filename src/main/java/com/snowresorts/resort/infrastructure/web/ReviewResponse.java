@@ -10,6 +10,8 @@ public record ReviewResponse(
         UUID id,
         UUID resortId,
         UUID userId,
+        String authorName,
+        String authorAvatarUrl,
         int rating,
         String title,
         String comment,
@@ -17,10 +19,16 @@ public record ReviewResponse(
         Instant createdAt) {
 
     public static ReviewResponse from(ResortReview review) {
+        return from(review, null, null);
+    }
+
+    public static ReviewResponse from(ResortReview review, String authorName, String authorAvatarUrl) {
         return new ReviewResponse(
                 review.id(),
                 review.resortId(),
                 review.userId(),
+                authorName,
+                authorAvatarUrl,
                 review.rating(),
                 review.title(),
                 review.comment(),

@@ -5,8 +5,10 @@ import com.snowresorts.security.SecurityUtils;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,8 +36,17 @@ public class ResortReviewController {
     @GetMapping
     public PageResponse<ReviewResponse> list(
             @PathVariable UUID resortId,
-            @PageableDefault(size = 20) Pageable pageable) {
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable) {
         return reviewService.listReviews(resortId, pageable);
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<ReviewResponse> getMyReview(@PathVariable UUID resortId) {
+        UUID userId = SecurityUtils.requireCurrentUserId();
+        return reviewService.findMyReview(resortId, userId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PostMapping

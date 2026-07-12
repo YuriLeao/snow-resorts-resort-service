@@ -1,8 +1,10 @@
 package com.snowresorts.resort.application;
 
 import com.snowresorts.resort.domain.model.ResortReview;
+import com.snowresorts.resort.domain.port.AuthorSummary;
 import com.snowresorts.resort.domain.port.ResortReviews;
 import com.snowresorts.resort.domain.port.Resorts;
+import com.snowresorts.resort.domain.port.ReviewAuthors;
 import com.snowresorts.resort.infrastructure.web.PageResponse;
 import com.snowresorts.resort.infrastructure.web.ReviewResponse;
 import com.snowresorts.security.error.BadRequestException;
@@ -14,9 +16,12 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,16 +37,31 @@ public class ResortReviewService {
 
     private final ResortReviews reviews;
     private final Resorts resorts;
+    private final ReviewAuthors reviewAuthors;
 
-    public ResortReviewService(ResortReviews reviews, Resorts resorts) {
+    public ResortReviewService(ResortReviews reviews, Resorts resorts, ReviewAuthors reviewAuthors) {
         this.reviews = reviews;
         this.resorts = resorts;
+        this.reviewAuthors = reviewAuthors;
     }
 
     @Transactional(readOnly = true)
     public PageResponse<ReviewResponse> listReviews(UUID resortId, Pageable pageable) {
         requireResort(resortId);
-        return PageResponse.from(reviews.findByResortId(resortId, pageable).map(ReviewResponse::from));
+        Page<ResortReview> page = reviews.findByResortId(resortId, pageable);
+        List<ReviewResponse> content = enrich(page.getContent());
+        return new PageResponse<>(
+                content,
+                page.getNumber(),
+                page.getSize(),
+                page.getTotalElements(),
+                page.getTotalPages());
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ReviewResponse> findMyReview(UUID resortId, UUID userId) {
+        requireResort(resortId);
+        return reviews.findByResortIdAndUserId(resortId, userId).map(this::enrich);
     }
 
     @Transactional
@@ -57,7 +77,7 @@ public class ResortReviewService {
                 UUID.randomUUID(), resortId, userId, rating, title, comment, visitedAt, Instant.now()));
         recomputeAggregate(resortId);
         log.info("Created review {} for resort {} by user {}", saved.id(), resortId, userId);
-        return ReviewResponse.from(saved);
+        return enrich(saved);
     }
 
     @Transactional
@@ -70,7 +90,7 @@ public class ResortReviewService {
                 existing.id(), resortId, userId, rating, title, comment, visitedAt, existing.createdAt()));
         recomputeAggregate(resortId);
         log.info("Updated review {} for resort {} by user {}", reviewId, resortId, userId);
-        return ReviewResponse.from(updated);
+        return enrich(updated);
     }
 
     @Transactional
@@ -79,6 +99,28 @@ public class ResortReviewService {
         reviews.deleteById(reviewId);
         recomputeAggregate(resortId);
         log.info("Deleted review {} for resort {} by user {}", reviewId, resortId, userId);
+    }
+
+    private ReviewResponse enrich(ResortReview review) {
+        return enrich(List.of(review)).getFirst();
+    }
+
+    private List<ReviewResponse> enrich(List<ResortReview> source) {
+        if (source.isEmpty()) {
+            return List.of();
+        }
+        List<UUID> userIds = source.stream().map(ResortReview::userId).distinct().toList();
+        Map<UUID, AuthorSummary> authors = reviewAuthors.resolve(userIds);
+        return source.stream()
+                .map(review -> {
+                    AuthorSummary author = authors.get(review.userId());
+                    String authorName = author != null
+                            ? author.displayName()
+                            : AuthorSummary.fallbackDisplayName(review.userId());
+                    String authorAvatarUrl = author != null ? author.avatarUrl() : null;
+                    return ReviewResponse.from(review, authorName, authorAvatarUrl);
+                })
+                .toList();
     }
 
     private ResortReview requireOwnedReview(UUID resortId, UUID reviewId, UUID userId) {

@@ -10,14 +10,18 @@ import static org.mockito.Mockito.when;
 
 import com.snowresorts.resort.domain.model.Resort;
 import com.snowresorts.resort.domain.model.ResortReview;
+import com.snowresorts.resort.domain.port.AuthorSummary;
 import com.snowresorts.resort.domain.port.ResortReviews;
 import com.snowresorts.resort.domain.port.Resorts;
+import com.snowresorts.resort.domain.port.ReviewAuthors;
+import com.snowresorts.resort.infrastructure.web.ReviewResponse;
 import com.snowresorts.security.error.BadRequestException;
 import com.snowresorts.security.error.ConflictException;
 import com.snowresorts.security.error.ForbiddenException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,12 +43,14 @@ class ResortReviewServiceTest {
     private ResortReviews reviews;
     @Mock
     private Resorts resorts;
+    @Mock
+    private ReviewAuthors reviewAuthors;
 
     private ResortReviewService service;
 
     @BeforeEach
     void setUp() {
-        service = new ResortReviewService(reviews, resorts);
+        service = new ResortReviewService(reviews, resorts, reviewAuthors);
     }
 
     private Resort resort() {
@@ -74,11 +80,15 @@ class ResortReviewServiceTest {
         when(reviews.existsByResortIdAndUserId(RESORT_ID, USER_ID)).thenReturn(false);
         when(reviews.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(reviews.findRatingsByResortId(RESORT_ID)).thenReturn(List.of(4, 5));
+        when(reviewAuthors.resolve(any())).thenReturn(Map.of(
+                USER_ID, new AuthorSummary("Rider", "http://cdn/avatar")));
 
         // Act
-        service.create(RESORT_ID, USER_ID, 5, "Epic", "Loved it", null);
+        ReviewResponse response = service.create(RESORT_ID, USER_ID, 5, "Epic", "Loved it", null);
 
         // Assert
+        assertThat(response.authorName()).isEqualTo("Rider");
+        assertThat(response.authorAvatarUrl()).isEqualTo("http://cdn/avatar");
         verify(reviews).save(any());
         verify(resorts).updateAggregate(RESORT_ID, new BigDecimal("4.50"), 2);
     }
@@ -106,6 +116,32 @@ class ResortReviewServiceTest {
         assertThatThrownBy(() -> service.create(RESORT_ID, USER_ID, 6, "x", "y", null))
                 .isInstanceOf(BadRequestException.class);
         verify(reviews, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("findMyReview returns the caller's review when one exists")
+    void findMyReview_whenPresent_returnsEnrichedReview() {
+        ResortReview ownReview = new ResortReview(REVIEW_ID, RESORT_ID, USER_ID, 4,
+                "good", "fun", null, Instant.now());
+        when(resorts.findById(RESORT_ID)).thenReturn(Optional.of(resort()));
+        when(reviews.findByResortIdAndUserId(RESORT_ID, USER_ID)).thenReturn(Optional.of(ownReview));
+        when(reviewAuthors.resolve(any())).thenReturn(Map.of(
+                USER_ID, new AuthorSummary("Rider", "http://cdn/avatar")));
+
+        var result = service.findMyReview(RESORT_ID, USER_ID);
+
+        assertThat(result).isPresent();
+        assertThat(result.get().authorName()).isEqualTo("Rider");
+        assertThat(result.get().rating()).isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("findMyReview is empty when the caller has not reviewed the resort")
+    void findMyReview_whenAbsent_returnsEmpty() {
+        when(resorts.findById(RESORT_ID)).thenReturn(Optional.of(resort()));
+        when(reviews.findByResortIdAndUserId(RESORT_ID, USER_ID)).thenReturn(Optional.empty());
+
+        assertThat(service.findMyReview(RESORT_ID, USER_ID)).isEmpty();
     }
 
     @Test

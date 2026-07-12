@@ -29,6 +29,11 @@ public class ResortReviewRepositoryAdapter implements ResortReviews {
     }
 
     @Override
+    public Optional<ResortReview> findByResortIdAndUserId(UUID resortId, UUID userId) {
+        return jpaRepository.findByResortIdAndUserId(resortId, userId).map(this::toDomain);
+    }
+
+    @Override
     public Page<ResortReview> findByResortId(UUID resortId, Pageable pageable) {
         return jpaRepository.findByResortId(resortId, pageable).map(this::toDomain);
     }

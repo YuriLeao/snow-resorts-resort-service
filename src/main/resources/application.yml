@@ -44,6 +44,11 @@ snow:
     public-paths:
       - /snow-resort-service/v1/resorts
       - /snow-resort-service/v1/resorts/**
+  user-service:
+    base-url: ${USER_SERVICE_BASE_URL:http://localhost:8082}
+  internal-api:
+    secret: ${INTERNAL_API_SECRET:dev-internal-secret}
+    header: X-Internal-Secret
 
 management:
   endpoints:

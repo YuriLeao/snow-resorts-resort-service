@@ -14,6 +14,8 @@ public interface ResortReviews {
 
     Optional<ResortReview> findById(UUID reviewId);
 
+    Optional<ResortReview> findByResortIdAndUserId(UUID resortId, UUID userId);
+
     Page<ResortReview> findByResortId(UUID resortId, Pageable pageable);
 
     /** @return all ratings for a resort, used to recompute the cached aggregate. */
