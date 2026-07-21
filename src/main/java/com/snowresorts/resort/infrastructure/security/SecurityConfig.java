@@ -1,6 +1,8 @@
 package com.snowresorts.resort.infrastructure.security;
 
+import com.snowresorts.security.jwt.AccessTokenRevocationStore;
 import com.snowresorts.security.jwt.JwtAuthoritiesConverter;
+import com.snowresorts.security.jwt.ResourceServerHttpSecurity;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -23,7 +25,8 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain resortFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain resortFilterChain(HttpSecurity http,
+                                          AccessTokenRevocationStore accessTokenRevocationStore) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
@@ -39,6 +42,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(
                         new JwtAuthoritiesConverter("roles", "ROLE_"))));
+        ResourceServerHttpSecurity.addAccessTokenRevocationFilter(http, accessTokenRevocationStore);
         return http.build();
     }
 }

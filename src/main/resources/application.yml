@@ -29,6 +29,10 @@ spring:
     default-schema: resorts
     create-schemas: true
     locations: classpath:db/migration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   security:
     oauth2:
       resourceserver:
@@ -44,6 +48,9 @@ snow:
     public-paths:
       - /snow-resort-service/v1/resorts
       - /snow-resort-service/v1/resorts/**
+    cors:
+      allowed-origins:
+        - ${CORS_ALLOWED_ORIGIN:http://localhost:8080}
   user-service:
     base-url: ${USER_SERVICE_BASE_URL:http://localhost:8082}
   internal-api:
