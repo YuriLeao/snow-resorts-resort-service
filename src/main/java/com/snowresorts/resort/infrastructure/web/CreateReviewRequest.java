@@ -16,6 +16,7 @@ public record CreateReviewRequest(
         @Size(max = 200, message = "title must be at most 200 characters")
         String title,
 
+        @Size(max = 2000, message = "comment must be at most 2000 characters")
         String comment,
 
         LocalDate visitedAt) {

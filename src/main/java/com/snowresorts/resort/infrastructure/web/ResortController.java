@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class ResortController {
 
     private static final double DEFAULT_RADIUS_METERS = 25_000d;
+    /** Cap catalog geo search — aligned with {@link #MAX_NEARBY_RADIUS_KM}. */
+    private static final double MAX_RADIUS_METERS = 200_000d;
     private static final double DEFAULT_NEARBY_RADIUS_KM = 100d;
     private static final double MAX_NEARBY_RADIUS_KM = 200d;
 
@@ -43,6 +45,10 @@ public class ResortController {
             lat = point[0];
             lng = point[1];
             radius = radiusMeters != null ? radiusMeters : DEFAULT_RADIUS_METERS;
+            if (radius <= 0 || radius > MAX_RADIUS_METERS) {
+                throw new BadRequestException(
+                        "radiusM must be > 0 and <= %.0f.".formatted(MAX_RADIUS_METERS));
+            }
         }
         return queryService.list(country, q, lat, lng, radius, pageable);
     }
