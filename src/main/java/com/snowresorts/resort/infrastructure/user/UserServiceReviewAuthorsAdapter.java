@@ -3,6 +3,7 @@ package com.snowresorts.resort.infrastructure.user;
 import com.snowresorts.resort.application.InternalApiProperties;
 import com.snowresorts.resort.domain.port.AuthorSummary;
 import com.snowresorts.resort.domain.port.ReviewAuthors;
+import com.snowresorts.security.logging.StructuredLogger;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +47,8 @@ public class UserServiceReviewAuthorsAdapter implements ReviewAuthors {
                             ProfileSummaryWire::userId,
                             summary -> new AuthorSummary(summary.displayName(), summary.avatarUrl())));
         } catch (Exception e) {
-            log.warn("Could not resolve review authors from user-service: {}", e.getMessage());
+            StructuredLogger.of(log).warn("review_authors_resolve", "failed", "user_service_error",
+                    "detail", e.getMessage());
             return Map.of();
         }
     }

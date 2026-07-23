@@ -11,6 +11,7 @@ import com.snowresorts.security.error.BadRequestException;
 import com.snowresorts.security.error.ConflictException;
 import com.snowresorts.security.error.ForbiddenException;
 import com.snowresorts.security.error.ResourceNotFoundException;
+import com.snowresorts.security.logging.StructuredLogger;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -76,7 +77,8 @@ public class ResortReviewService {
         ResortReview saved = reviews.save(new ResortReview(
                 UUID.randomUUID(), resortId, userId, rating, title, comment, visitedAt, Instant.now()));
         recomputeAggregate(resortId);
-        log.info("Created review {} for resort {} by user {}", saved.id(), resortId, userId);
+        StructuredLogger.of(log).info("review_create", "succeeded", "created",
+                "review_id", saved.id(), "resort_id", resortId, "user_id", userId);
         return enrich(saved);
     }
 
@@ -89,7 +91,8 @@ public class ResortReviewService {
         ResortReview updated = reviews.save(new ResortReview(
                 existing.id(), resortId, userId, rating, title, comment, visitedAt, existing.createdAt()));
         recomputeAggregate(resortId);
-        log.info("Updated review {} for resort {} by user {}", reviewId, resortId, userId);
+        StructuredLogger.of(log).info("review_update", "succeeded", "owner_write",
+                "review_id", reviewId, "resort_id", resortId, "user_id", userId);
         return enrich(updated);
     }
 
@@ -98,7 +101,8 @@ public class ResortReviewService {
         requireOwnedReview(resortId, reviewId, userId);
         reviews.deleteById(reviewId);
         recomputeAggregate(resortId);
-        log.info("Deleted review {} for resort {} by user {}", reviewId, resortId, userId);
+        StructuredLogger.of(log).info("review_delete", "succeeded", "owner_write",
+                "review_id", reviewId, "resort_id", resortId, "user_id", userId);
     }
 
     private ReviewResponse enrich(ResortReview review) {
